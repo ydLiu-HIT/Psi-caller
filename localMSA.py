@@ -13,9 +13,7 @@ from check import *
 from getHCVariant import callHCVariant, callLCVariant
 from subCall import mergeCoVar, most_likely_genotype, getExactMatch, makeCandidate
 from poa_module import POA
-from subPoa_module import subPOA
 from ksw2_module import ksw2_aligner
-from ksw_module import ksw_aligner
 from mantaAss_module import mantaAss
 
 is_pypy = '__pypy__' in sys.builtin_module_names
@@ -227,7 +225,7 @@ def checksoft_and_realign(ref, rS, queries, Start, End, indL, Sig):
     
         if re:
             tseq = str(ref[ps+1-rS:pe+1-rS])
-            reali = ksw_aligner(SEQ, tseq, 4)
+            reali = ksw2_aligner(SEQ, tseq, 4)
             if Sig:
                 print("preCigar:", CIGAR, POS, POSEND)
                 print("query:", SEQ)
@@ -377,7 +375,7 @@ def ksw_core(consensus, target, chrName, RNAME, reference_sequence, rS, shift, x
         if len(msa) == 0: continue
         #msa = bytes.decode(consensus[i])
         msa = bytes.decode(msa)
-        alignment = ksw_aligner(msa, target, x_score)
+        alignment = ksw2_aligner(msa, target, x_score)
         alignment[1] = getExactMatch(alignment[1], target, msa, 0)
         
         if Sig: print(alignment)
@@ -546,7 +544,7 @@ def main_ctrl(args):
             if indL > 20: checksoft_and_realign(reference_sequence, refStart, queries, Start, End, indL, Sig) 
             
             ################ using abpoa for first round ####################
-            flanking = 50; useAllReads = False
+            flanking = 25; useAllReads = False
             canList, cluster_n, query, qual, target = run_poa(candidate, reference_sequence, queries, refStart, flanking, useAllReads, indL, useBaseQuality, args, multiCan, IsID, Sig)
             #################################################################
 
@@ -608,11 +606,11 @@ def run():
             help="Minimum Mapping Quality. Mapping quality lower than the setting will be filtered, default:%(default)d")
     parser.add_argument("--minCNT", type=int, default=3,
             help="Minimum read counts required to call a variant, default:%(default)d")
-    parser.add_argument("--max_merge_dis", type=int, default=5,
+    parser.add_argument("--max_merge_dis", type=int, default=10,
             help="Max distance to merge two variant candidates, default:%(default)d")
     parser.add_argument("--shift", type=int, default=5,
             help="The distance bewteen the detect variant and the activate region, default:%(default)d")
-    parser.add_argument("--flanking", type=int, default=50,
+    parser.add_argument("--flanking", type=int, default=70,
             help="Flanking base pairs around variant site, default: %(default)d")
     parser.add_argument("--useBaseQuality", action='store_true', default=False,
             help="Use base quality to call variant, which will realignmet local reads to haplotypes and cost more time with little improvment of performance, default: True")

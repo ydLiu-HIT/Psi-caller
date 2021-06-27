@@ -15,7 +15,6 @@ import re
 from time import time
 from utils import base_to_ACGT as base2ACGT 
 from check import *
-from ksw_module import ksw_aligner
 from ksw2_module import ksw2_aligner
 from math_func import *
 from Canclass import *
@@ -245,7 +244,7 @@ def realignWithQuality(QUERY, QUAL, Haplot, var, Param, amplifier, extflank, x_s
         rsc = []; od = 0
         for hap in Haplot:
             TS, TL, LH = Param[od]; od += 1;
-            alignment = ksw_aligner(qseq, hap, x_score)
+            alignment = ksw2_aligner(qseq, hap, x_score)
             newCigar = getExactMatch(alignment[1], hap, qseq, 0); alignment[1] = newCigar
             prob = re_calc_MQ_locally(alignment[1], qual, TS, TL, extflank); alignment[0] = prob
             alignment[0] = min(max(math.pow(10, prob/amplifier), _MIN_MQ), _MAX_PROB) # method1

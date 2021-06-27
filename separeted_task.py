@@ -2,7 +2,7 @@
 # coding=utf-8
 ''' 
  * All rights Reserved, Designed By HIT-Bioinformatics   
- * @Title:  psi-pipe.py
+ * @Title:  generate_task.py
  * @author: Yadong Liu
  * @date: Jun 24th 2020
  * @version V1.0   
@@ -37,7 +37,8 @@ class maindp(object):
 def run(args):
     basedir = os.path.dirname(__file__)
 
-    callBin = basedir + "calling.py"
+    extractBin = basedir + "ExtractVariantCandidate.py"
+    callBin = basedir + "localMSA.py"
     pypyBin = CheckCmdExist(args.pypy)
 
     fin_bam = CheckFileExist(args.fin_bam)
@@ -73,18 +74,21 @@ def run(args):
     if not os.path.exists(args.workDir):
         os.makedirs(args.workDir)
     output_prefix = args.workDir + '/' if args.workDir[-1] != '/' else args.workDir
+    task_extract = args.task_prefix + "_extract.sh"
+    task_call = args.task_prefix + "_call.sh"
+    fp_extract = open(task_extract, 'w')
+    fp_call = open(task_call, 'w')
 
-    callVar_command_options = [
-        ExecuteCommand('python', callBin),
+    Extract_command_options = [
+        pypyBin,
+        extractBin,
         CommandOption('fin_bam', fin_bam),
         CommandOption('fin_ref', fin_ref),
         CommandOption('fin_repeat', fin_repeat),
         CommandOption('minMQ', minMQ),
         CommandOption('min_ava_BQ', minBQ),
-        CommandOption('minCNT', minCNT),
         CommandOption('minRatio_snp', minRatio_snp),
         CommandOption('minRatio_indel', minRatio_indel),
-        CommandOption('pypy', pypyBin),
         CommandOption("variantType", variantType),
         CommandOption('minCov_for_snp', minCov_for_snp),
         CommandOption('minCov_for_indel', minCov_for_indel),
@@ -92,6 +96,15 @@ def run(args):
         CommandOption('min_r_indel_HC', min_r_indel_HC),
         CommandOption('min_c_snp_HC', min_c_snp_HC),
         CommandOption('min_c_indel_HC', min_c_indel_HC),
+    ]
+
+    Call_command_options = [
+        pypyBin,
+        callBin,
+        CommandOption('fin_bam', fin_bam),
+        CommandOption('fin_ref', fin_ref),
+        CommandOption('minMQ', minMQ),
+        CommandOption('minCNT', minCNT),
         CommandOption('perror_for_snp', perror_for_snp),
         CommandOption('perror_for_indel', perror_for_indel),
         CommandOption('ratio_identity_snp', ratio_identity_snp),
@@ -102,10 +115,14 @@ def run(args):
     ]
     
     if args.useBaseQuality:
-        callVar_command_options.append(CommandOptionWithNoValue('useBaseQuality'))
+        Call_command_options.append(CommandOptionWithNoValue('useBaseQuality'))
 
     if args.useAllReads:
-        callVar_command_options.append(CommandOptionWithNoValue('useAllReads'))
+        Call_command_options.append(CommandOptionWithNoValue('useAllReads'))
+
+
+    task_extract = open("task_extract.sh", 'w')
+    task_call = open("task_call.sh", 'w')
 
     with open(fin_ref_fai, 'r') as fai_fp:
         for row in fai_fp:
@@ -123,16 +140,31 @@ def run(args):
                 if region_end > contig_length:
                     region_end = contig_length
 
-                output_fn = "%s.%s_%d_%d.vcf" % (output_prefix+"var", contig_name, region_start, region_end)
+                output_fn = "%s.%s_%d_%d.can" % (output_prefix+"var", contig_name, region_start, region_end)
 
                 additional_command_options = [
                     CommandOption('chrName', contig_name),
                     CommandOption('chrStart', region_start),
                     CommandOption('chrEnd', region_end),
-                    CommandOption('fout_vcf', output_fn)
+                    CommandOption('fout_can', output_fn)
                 ]
-                
-                print(command_string_from(callVar_command_options) + " " + command_string_from(additional_command_options))
+                cstr = command_string_from(Extract_command_options) + " " + command_string_from(additional_command_options)
+                fp_extract.write(cstr + "\n")
+
+                # call
+                output_vcf = "%s.%s_%d_%d.vcf" % (output_prefix+"var", contig_name, region_start, region_end)
+                additional_command_options = [
+                    CommandOption('chrName', contig_name),
+                    CommandOption('chrStart', region_start),
+                    CommandOption('chrEnd', region_end),
+                    CommandOption('fin_can', output_fn),
+                    CommandOption('fout_vcf', output_vcf)
+                ]
+                cstr = command_string_from(Call_command_options) + " " + command_string_from(additional_command_options)
+                fp_call.write(cstr + "\n")
+
+    fp_extract.close()
+    fp_call.close()
 
 def main():
     parser = argparse.ArgumentParser(prog="Psi-caller",
@@ -160,6 +192,11 @@ def main():
             type=str, 
             default=None,
             help="Tandem repeat intervals for indel assembly, default: %(default)s")
+
+    parser.add_argument("--task_prefix",
+            type=str,
+            default="task",
+            help="prefix of task list, default:%(default)s")
 
     parser.add_argument("--minMQ", 
             type=int, 

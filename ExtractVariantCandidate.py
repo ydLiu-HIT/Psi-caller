@@ -342,8 +342,6 @@ def main():
             help="The inclusive ending positions of the reference to be processed")
     parser.add_argument("--variantType", type=str, default="all",
             help="Extract candidates of SNP, indel or all of small variant,[snp, indel, all], default: %(default)s")
-    parser.add_argument("--threads", type=int, default=1,
-            help="Number of threads to use, default:%(default)d")
     args = parser.parse_args()
     if len(sys.argv[1:]) == 0:
         parser.print_help()
