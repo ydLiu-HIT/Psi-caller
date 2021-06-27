@@ -1,0 +1,155 @@
+/*************************************************************************
+	> File Name: pyPOA.c
+	> Author: 
+	> Mail: 
+	> Created Time: Sun Jan  5 21:45:58 2020
+ ************************************************************************/
+
+#include <stdio.h>
+#include <stdint.h>
+#include "abpoa.h"
+
+#define PY_SSIZE_T_CLEAN
+#include <Python.h>
+
+#define MAXSEQLEN 4096 
+
+// AaCcGgTtNn ==> 0,1,2,3,4
+unsigned char nst_nt4_table[256] = {
+	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4, 
+	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4, 
+	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 5 /*'-'*/, 4, 4,
+	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4, 
+	4, 0, 4, 1,  4, 4, 4, 2,  4, 4, 4, 4,  4, 4, 4, 4, 
+	4, 4, 4, 4,  3, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4, 
+	4, 0, 4, 1,  4, 4, 4, 2,  4, 4, 4, 4,  4, 4, 4, 4, 
+	4, 4, 4, 4,  3, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4, 
+	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4, 
+	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4, 
+	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4, 
+	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4, 
+	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4, 
+	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4, 
+	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4, 
+	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4
+};
+
+static PyObject* POA(PyObject *self, PyObject *args)
+{
+    PyObject *listObj;
+    int multi;
+    float freq;
+    int is_msa;
+    if(! PyArg_ParseTuple(args, "Oifi", &listObj, &multi, &freq, &is_msa))
+        return NULL;
+    //length of the list
+    int seq_n = PyList_Size(listObj);
+    //iterate over all the element
+    int i, j;
+    char **Reads = (char **)malloc(seq_n*sizeof(char*));
+    for(i = 0; i < seq_n; ++i)
+    {
+        Reads[i] = (char *)malloc(MAXSEQLEN*sizeof(char));
+        strcpy(Reads[i], PyBytes_AsString(PyList_GetItem(listObj, i)));
+    }
+    Py_CLEAR(listObj);  //free
+    abpoa_t *ab = abpoa_init();
+    abpoa_para_t *abpt = abpoa_init_para();
+
+    // output options
+    abpt->align_mode = 0; // 0:global, 1:extension, 2: local
+    abpt->out_msa = is_msa; // generate Row-Column multiple sequence alignment(RC-MSA), set 0 to disable
+    abpt->out_cons = 1; // generate consensus sequence, set 0 to disable
+    abpt->out_pog = 0; // generate parital order graph using DOT, set 0 to disable
+    abpt->is_diploid = multi; // multiple consensus
+    abpt->min_freq = freq; // min freuence for multiple consensus
+
+    abpoa_post_set_para(abpt);
+
+    int *seq_lens = (int*)malloc(sizeof(int) * seq_n);
+    uint8_t **bseqs = (uint8_t**)malloc(sizeof(uint8_t*) * seq_n);
+    for (i = 0; i < seq_n; ++i) {
+        seq_lens[i] = strlen(Reads[i]);
+        bseqs[i] = (uint8_t*)malloc(sizeof(uint8_t) * seq_lens[i]);
+        for (j = 0; j < seq_lens[i]; ++j)
+            bseqs[i][j] = nst_nt4_table[(int)Reads[i][j]];
+    }
+
+    // variables to store result
+    uint8_t **cons_seq; int *cons_l, cons_n=0;
+    uint8_t **msa_seq; int msa_l = 0;
+    int cluster_ids_n[2] = {0, 0};
+
+    // perform abpoa-msa
+    abpoa_msa(ab, abpt, seq_n, seq_lens, bseqs, NULL, &cons_seq, &cons_l, &cons_n, (is_msa == 1)? &msa_seq : NULL, (is_msa == 1)? &msa_l : NULL, cluster_ids_n);
+
+    PyObject *rList_cons = PyList_New(cons_n);
+    PyObject *rList_n = PyList_New(cons_n);
+    PyObject *rList_msa = PyList_New(seq_n);
+
+    char *s = (char *)calloc(MAXSEQLEN, sizeof(char));
+    for(i = 0; i < cons_n; ++i)
+    {
+        for (j = 0; j < cons_l[i]; ++j)
+            s[j] = "ACGTN"[cons_seq[i][j]];
+        s[cons_l[i]] = '\0';
+        PyList_SetItem(rList_cons, i, PyBytes_FromString(s));
+        PyList_SetItem(rList_n, i, PyLong_FromLong(cluster_ids_n[i]));
+    }
+
+    if(is_msa == 1)
+    {
+        for(i = 0; i < seq_n; ++i)
+        {
+            for (j = 0; j < msa_l; ++j)
+                s[j] = "ACGTN-"[msa_seq[i][j]];
+            s[msa_l] = '\0';
+
+            PyList_SetItem(rList_msa, i, PyBytes_FromString(s));
+        }    
+    }
+    
+    free(s);
+
+    if (cons_n) {
+        for (i = 0; i < cons_n; ++i) free(cons_seq[i]); 
+        free(cons_seq); free(cons_l);
+    }
+    if (is_msa) {
+        for (i = 0; i < seq_n; ++i) free(msa_seq[i]); 
+        free(msa_seq);
+    }
+    for (i = 0; i < seq_n; ++i) free(bseqs[i]); free(bseqs); free(seq_lens);
+    abpoa_free(ab, abpt); abpoa_free_para(abpt); 
+    
+
+    //free
+    for(i = 0; i < seq_n; ++i)
+        if(Reads[i]!=NULL) free(Reads[i]);
+    if(Reads!=NULL) free(Reads);
+    
+    if (is_msa == 1)
+        return Py_BuildValue("OOO", rList_n, rList_cons, rList_msa);
+    else
+        return Py_BuildValue("OO", rList_n, rList_cons);
+}
+
+/*define functions in module */
+static PyMethodDef myMethods[] = {
+    {"POA", POA, METH_VARARGS, "Execute other function."},
+    {NULL, NULL, 0, NULL}
+};
+
+/*module initialization */
+/*Python version 3 */
+static struct PyModuleDef poaModuleDem = 
+{
+    PyModuleDef_HEAD_INIT,
+    "poa_module", "Some documentation",
+    -1,
+    myMethods
+};
+PyMODINIT_FUNC PyInit_poa_module(void)
+{
+    return PyModule_Create(&poaModuleDem);
+}
