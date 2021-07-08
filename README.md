@@ -13,6 +13,7 @@ a lightweight short read-based variant caller with high speed and accuracy
     ## generate subtasks and variant calling
     python generate_task.py aln.bam reference.fa workspace/ > tasks.sh
     cat tasks.sh | parallel -j 6
+    bash post_process.sh workspace output.vcf
 
 ## Introduction
 
@@ -25,11 +26,13 @@ python3
 pypy3
 Cython
 numpy
+vcfcat
 intervaltree
 samtools  # samtools was used to extract read sequence in order to generate allele sequence.
 
 ### install dependence
 conda install -c conda-forge pypy3.6
+conda install -c bioconda vcflib
 pypy3 -m ensurepip
 pypy3 -m pip install Cython intervaltree numpy
 ```
