@@ -12,7 +12,7 @@ except ImportError:
 
 extra_compile_args = []
 
-extra_compile_args = extra_compile_args + ['-O3', '-Wno-error=declaration-after-statement']
+extra_compile_args = extra_compile_args + ['-O3', '-Wno-error=declaration-after-statement', '-std=c++17']
 
 extensions = Extension("mantaAss_module", 
         sources = ["mantaAssembler.cpp"], 
