@@ -612,7 +612,7 @@ def run():
             help="The distance bewteen the detect variant and the activate region, default:%(default)d")
     parser.add_argument("--flanking", type=int, default=70,
             help="Flanking base pairs around variant site, default: %(default)d")
-    parser.add_argument("--useBaseQuality", action='store_true', default=False,
+    parser.add_argument("--useBaseQuality", action='store_true', default=True,
             help="Use base quality to call variant, which will realignmet local reads to haplotypes and cost more time with little improvment of performance, default: True")
     parser.add_argument("--useAllReads", action='store_true', default=False,
             help="Use all local reads (including spanning reads and part-overlapped reads) to perform MSA, default: True")
