@@ -235,12 +235,12 @@ def main():
     #*******Parameters of ExtractVariantCandidate.py****
     parser.add_argument("--perror_for_snp", 
             type=float, 
-            default=0.1,
+            default=0.03,
             help="P-error is the probability of observing a heterozygote SNP, default:%(default)f")
 
     parser.add_argument("--perror_for_indel", 
             type=float,
-            default=0.1,
+            default=0.03,
             help="P-error is the probability of observing a heterozygote indel, default:%(default)f")
 
     parser.add_argument("--ratio_identity_snp", 
