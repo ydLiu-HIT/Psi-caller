@@ -280,7 +280,7 @@ def main():
 
     parser.add_argument("--useBaseQuality",
             action='store_true', 
-            default=False,
+            default=True,
             help="Use base quality to call variant, which will realignmet local reads to haplotypes and cost more time with little improvment of performance, default: True")
 
 
