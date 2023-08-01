@@ -593,9 +593,9 @@ def run():
             help="The 1-based starting positions of the reference to be processed")
     parser.add_argument("--chrEnd", type=int, default=None,
             help="The inclusive ending positions of the reference to be processed")
-    parser.add_argument("--perror_for_snp", type=float, default=0.1,
+    parser.add_argument("--perror_for_snp", type=float, default=0.03,
             help="P-error is the probability of observing a heterozygote SNP, default:%(default)f")
-    parser.add_argument("--perror_for_indel", type=float, default=0.1,
+    parser.add_argument("--perror_for_indel", type=float, default=0.03,
             help="P-error is the probability of observing a heterozygote indel, default:%(default)f")
 
     parser.add_argument("--ratio_identity_snp", type=float, default=0.2,
